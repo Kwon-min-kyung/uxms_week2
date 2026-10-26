@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mirror mirror..</title>
+
+<style>
+
+@font-face {
+    font-family: 'UnShinmun';
+    src: url('./UnShinmun.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    background: #d5d5d5;
+    font-family: 'UnShinmun', serif;
+}
+
+.screen {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    padding: 15px 20px;
+    text-align: center;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+h1 {
+    margin: 0 0 10px 0;
+    font-size: clamp(26px, 3vw, 42px);
+    font-weight: normal;
+    flex-shrink: 0;
+}
+
+/* --- screen1 스타일 수정 (상단/하단 고정 및 거울 1.2배 확대) --- */
+#screen1 {
+    justify-content: space-between;
+    padding: 35px 20px;
+}
+
+.mirror-container-s1 {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 380px; /* 기존 340px의 약 1.2배 */
+    max-width: 85vw;
+    height: 504px; /* 기존 420px의 약 1.2배 */
+    max-height: 52vh;
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+.mirror-container-s1:hover {
+    transform: scale(1.03);
+}
+
+.webcam-s1 {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    clip-path: ellipse(36% 43% at 50% 50%);
+    filter: blur(14px) brightness(0.9);
+    transform: scaleX(-1);
+    z-index: 1;
+}
+
+.mirror {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    z-index: 2;
+}
+
+#screen1 p {
+    margin: 0;
+    font-size: 22px;
+    white-space: nowrap;
+}
+
+/* --- screen2 ~ 4 공통 레이아웃 및 back.png 배경 적용 --- */
+#screen2, #screen3, #screen4 {
+    background: url('back.png') no-repeat center center;
+    background-size: cover;
+}
+
+/* --- screen5 배경 back2.png 및 h1 화이트 컬러 적용 --- */
+#screen5 {
+    background: url('back2.png') no-repeat center center;
+    background-size: cover;
+}
+
+#screen5 h1 {
+    color: white;
+}
+
+.content-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    width: min(92vw, 1150px);
+    flex: 0 1 auto;
+}
+
+.mirror-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1.7 / 1;
+    margin: 0;
+    padding: 0;
+    line-height: 0;
+    z-index: 10;
+}
+
+.camera-area {
+    position: absolute;
+    top: 19%;
+    left: 7%;
+    width: 86%;
+    height: 70%;
+    background: #111;
+    border-radius: 48% 48% 3% 3% / 38% 38% 3% 3%;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.render-canvas {
+    display: none;
+    width: 100%;
+    height: 100%;
+}
+
+.cameraText-style {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    transform: translate(-50%, -50%);
+    color: #777;
+    font-size: 24px;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+}
+
+.frame-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    z-index: 2;
+    pointer-events: none;
+    display: block;
+}
+
+/* --- 하단 텍스트박스 --- */
+.dialogue-box {
+    position: relative;
+    width: 100%;
+    height: clamp(110px, 11.5vw, 145px);
+    padding: 0 50px;
+    
+    margin-top: -40px;
+    z-index: 1;
+    
+    background: url('textbox.png') no-repeat center center;
+    background-size: 100% 100%;
+    background-color: transparent;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    font-family: 'UnShinmun', serif;
+    font-size: clamp(19px, 2.1vw, 26px);
+}
+
+.dialogue-left {
+    text-align: left;
+    max-width: 50%;
+    word-break: keep-all;
+}
+
+.dialogue-right {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+    max-width: 50%;
+}
+
+.choice-item {
+    cursor: pointer;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+}
+
+.choice-item:hover {
+    opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+    .dialogue-box {
+        margin-top: -25px;
+    }
+}
+
+/* 화면 전환 애니메이션 (1->2 전용) */
+#screen1.zoom-in {
+    animation: mirrorZoom 1.1s cubic-bezier(0.65, 0, 0.9, 0.4) forwards;
+}
+
+@keyframes mirrorZoom {
+    0% {
+        transform: scale(1);
+        filter: blur(0);
+        opacity: 1;
+    }
+    25% {
+        transform: scale(1.08);
+        filter: blur(0);
+        opacity: 1;
+    }
+    60% {
+        transform: scale(2.5);
+        filter: blur(3px);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(9);
+        filter: blur(18px);
+        opacity: 0;
+    }
+}
+
+.screen.appear {
+    animation: cameraAppear 0.6s ease-out both;
+}
+
+@keyframes cameraAppear {
+    0% {
+        opacity: 0;
+        filter: blur(12px);
+        transform: scale(1.12);
+    }
+    100% {
+        opacity: 1;
+        filter: blur(0);
+        transform: scale(1);
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- 화면 1 -->
+<div class="screen" id="screen1" style="display: flex;">
+    <h1>거울님은 오직 진실만을 말하십니다.</h1>
+
+    <div class="mirror-container-s1" onclick="showCamera()">
+        <video id="webcam1" class="webcam-s1" autoplay muted playsinline></video>
+        <img src="mir.png" class="mirror" alt="거울">
+    </div>
+
+    <p>거울을 들여다 보세요.</p>
+</div>
+
+<!-- 화면 2 (기본 원본) -->
+<div class="screen" id="screen2" style="display: none;">
+    <h1>거울님이 말씀하십니다.</h1>
+
+    <div class="content-wrapper">
+        <div class="mirror-frame">
+            <div class="camera-area">
+                <canvas id="canvas2" class="render-canvas"></canvas>
+                <div id="cameraText2" class="cameraText-style">웹캠 영역</div>
+            </div>
+            <img src="frame.png" class="frame-image" alt="거울 프레임">
+        </div>
+
+        <div class="dialogue-box">
+            <div class="dialogue-left">
+                ▶ &nbsp; 수려한 얼굴을 가졌구나.
+            </div>
+            <div class="dialogue-right">
+                <div class="choice-item" onclick="goToScreen1()">▶ &nbsp; 고마워요 거울님!</div>
+                <div class="choice-item" onclick="goToScreen(3)">▶ &nbsp; 한번 더 듣고 싶어요!</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 화면 3 (슬릿 스캔 왜곡) -->
+<div class="screen" id="screen3" style="display: none;">
+    <h1>거울님이 당신을 주시하고 있어요.</h1>
+
+    <div class="content-wrapper">
+        <div class="mirror-frame">
+            <div class="camera-area">
+                <canvas id="canvas3" class="render-canvas"></canvas>
+                <div id="cameraText3" class="cameraText-style">웹캠 영역</div>
+            </div>
+            <img src="frame.png" class="frame-image" alt="거울 프레임">
+        </div>
+
+        <div class="dialogue-box">
+            <div class="dialogue-left">
+                코가 장인이 심혈을 기울여 만든 조각상의 코처럼 아름답구나.
+            </div>
+            <div class="dialogue-right">
+                <div class="choice-item" onclick="goToScreen1()">▶ &nbsp; 하하, 칭찬이 과하시네요!</div>
+                <div class="choice-item" onclick="goToScreen(4)">▶ &nbsp; 조금 더 듣고 싶어요. 한번만 더!</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 화면 4 (더 강해진 슬릿 스캔 왜곡) -->
+<div class="screen" id="screen4" style="display: none;">
+    <h1>거울님이 말씀에 귀 기울이세요.</h1>
+
+    <div class="content-wrapper">
+        <div class="mirror-frame">
+            <div class="camera-area">
+                <canvas id="canvas4" class="render-canvas"></canvas>
+                <div id="cameraText4" class="cameraText-style">웹캠 영역</div>
+            </div>
+            <img src="frame.png" class="frame-image" alt="거울 프레임">
+        </div>
+
+        <div class="dialogue-box">
+            <div class="dialogue-left">
+                당신의 얼굴로 태어났다면 좋았을텐데.
+            </div>
+            <div class="dialogue-right">
+                <div class="choice-item" onclick="goToScreen1()">▶ &nbsp; 거울 앞을 떠나겠어요.</div>
+                <div class="choice-item" onclick="goToScreen(5)">▶ &nbsp; 조금만 더요!</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 화면 5 (강한 슬릿 스캔 + 2초 주기 섬세한 미니 모자이크 깜빡임) -->
+<div class="screen" id="screen5" style="display: none;">
+    <h1>아직도 거울님을 보고 있나요?</h1>
+
+    <div class="content-wrapper">
+        <div class="mirror-frame">
+            <div class="camera-area">
+                <canvas id="canvas5" class="render-canvas"></canvas>
+                <div id="cameraText5" class="cameraText-style">웹캠 영역</div>
+            </div>
+            <img src="frame.png" class="frame-image" alt="거울 프레임">
+        </div>
+
+        <div class="dialogue-box">
+            <div class="dialogue-left">
+                제발, 당신의 얼굴을 갖기 위해서라면 독사과라도 삼키겠어요!! 
+            </div>
+            <div class="dialogue-right">
+                <div class="choice-item" onclick="goToScreen1()">▶ &nbsp; 거울 앞을 떠나겠어요!</div>
+                <div class="choice-item" onclick="goToScreen1()">▶ &nbsp; 이제는 그만둘 수 없어</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<video id="hiddenVideo" autoplay muted playsinline style="display:none;"></video>
+
+<script>
+
+let stream = null;
+let isTransitioning = false;
+let currentScreenNum = 1;
+let animFrameId = null;
+
+let frameHistory = [];
+const maxHistoryFrames = 50;
+
+let isFaceMosaicOn = false;
+let mosaicTimer = null;
+
+/* 웹캠 비율 유지 Cover 그리기 헬퍼 */
+function getCoverRect(video, cw, ch) {
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    const videoRatio = vw / vh;
+    const canvasRatio = cw / ch;
+
+    let sx, sy, sw, sh;
+    if (canvasRatio > videoRatio) {
+        sw = vw;
+        sh = vw / canvasRatio;
+        sx = 0;
+        sy = (vh - sh) / 2;
+    } else {
+        sh = vh;
+        sw = vh * canvasRatio;
+        sx = (vw - sw) / 2;
+        sy = 0;
+    }
+    return { sx, sy, sw, sh, vw, vh };
+}
+
+/* 메인 렌더링 루프 */
+function renderScene() {
+    if (currentScreenNum >= 2) {
+        const hiddenVideo = document.getElementById("hiddenVideo");
+        const canvasElem = document.getElementById("canvas" + currentScreenNum);
+
+        if (hiddenVideo && canvasElem && hiddenVideo.readyState === 4) {
+            const ctx = canvasElem.getContext('2d', { willReadFrequently: true });
+            const cw = canvasElem.width = canvasElem.clientWidth || 600;
+            const ch = canvasElem.height = canvasElem.clientHeight || 400;
+
+            const rect = getCoverRect(hiddenVideo, cw, ch);
+
+            // --- 2번 페이지 : 일반 원본 화면 ---
+            if (currentScreenNum === 2) {
+                ctx.save();
+                ctx.translate(cw, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(hiddenVideo, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, cw, ch);
+                ctx.restore();
+            }
+
+            // --- 3번 페이지 : 슬릿 스캔 왜곡 ---
+            else if (currentScreenNum === 3) {
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = cw;
+                offCanvas.height = ch;
+                const offCtx = offCanvas.getContext('2d');
+                offCtx.translate(cw, 0);
+                offCtx.scale(-1, 1);
+                offCtx.drawImage(hiddenVideo, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, cw, ch);
+
+                frameHistory.unshift(offCanvas);
+                if (frameHistory.length > 25) frameHistory.pop();
+
+                ctx.clearRect(0, 0, cw, ch);
+                const numSlices = 25;
+                const sliceHeight = ch / numSlices;
+
+                for (let i = 0; i < numSlices; i++) {
+                    const historyIndex = Math.min(i, frameHistory.length - 1);
+                    const sourceCanvas = frameHistory[historyIndex];
+                    const y = i * sliceHeight;
+                    ctx.drawImage(sourceCanvas, 0, y, cw, sliceHeight, 0, y, cw, sliceHeight);
+                }
+            }
+
+            // --- 4번 페이지 : 더 강력한 슬릿 스캔 왜곡 ---
+            else if (currentScreenNum === 4) {
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = cw;
+                offCanvas.height = ch;
+                const offCtx = offCanvas.getContext('2d');
+                offCtx.translate(cw, 0);
+                offCtx.scale(-1, 1);
+                offCtx.drawImage(hiddenVideo, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, cw, ch);
+
+                frameHistory.unshift(offCanvas);
+                if (frameHistory.length > maxHistoryFrames) frameHistory.pop();
+
+                ctx.clearRect(0, 0, cw, ch);
+                const numSlices = 70;
+                const sliceHeight = ch / numSlices;
+
+                for (let i = 0; i < numSlices; i++) {
+                    const waveOffset = Math.floor(Math.sin(i * 0.2) * 5);
+                    const historyIndex = Math.min(Math.max(0, i + waveOffset), frameHistory.length - 1);
+                    const sourceCanvas = frameHistory[historyIndex];
+
+                    const y = i * sliceHeight;
+                    ctx.drawImage(sourceCanvas, 0, y, cw, sliceHeight, 0, y, cw, sliceHeight);
+                }
+            }
+
+            // --- 5번 페이지 : 강한 슬릿 스캔 + 2초 주기 미니 모자이크 깜빡임 (픽셀 크기 작게 32x32) ---
+            else if (currentScreenNum === 5) {
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = cw;
+                offCanvas.height = ch;
+                const offCtx = offCanvas.getContext('2d');
+                offCtx.translate(cw, 0);
+                offCtx.scale(-1, 1);
+                offCtx.drawImage(hiddenVideo, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, cw, ch);
+
+                frameHistory.unshift(offCanvas);
+                if (frameHistory.length > maxHistoryFrames) frameHistory.pop();
+
+                ctx.clearRect(0, 0, cw, ch);
+                const numSlices = 70;
+                const sliceHeight = ch / numSlices;
+
+                for (let i = 0; i < numSlices; i++) {
+                    const waveOffset = Math.floor(Math.sin(i * 0.2) * 5);
+                    const historyIndex = Math.min(Math.max(0, i + waveOffset), frameHistory.length - 1);
+                    const sourceCanvas = frameHistory[historyIndex];
+
+                    const y = i * sliceHeight;
+                    ctx.drawImage(sourceCanvas, 0, y, cw, sliceHeight, 0, y, cw, sliceHeight);
+                }
+
+                // 2초마다 깜빡이는 얼굴 영역 모자이크 (픽셀 크기를 더 작고 섬세하게 조절: 32×32)
+                if (isFaceMosaicOn) {
+                    const faceX = cw * 0.25;
+                    const faceY = ch * 0.1;
+                    const faceW = cw * 0.5;
+                    const faceH = ch * 0.7;
+
+                    const mosaicCols = 32; 
+                    const mosaicRows = 32;
+
+                    const tinyCanvas = document.createElement('canvas');
+                    tinyCanvas.width = mosaicCols;
+                    tinyCanvas.height = mosaicRows;
+                    const tinyCtx = tinyCanvas.getContext('2d');
+
+                    tinyCtx.drawImage(canvasElem, faceX, faceY, faceW, faceH, 0, 0, mosaicCols, mosaicRows);
+
+                    ctx.imageSmoothingEnabled = false;
+                    ctx.drawImage(tinyCanvas, 0, 0, mosaicCols, mosaicRows, faceX, faceY, faceW, faceH);
+                    ctx.imageSmoothingEnabled = true;
+                }
+            }
+        }
+        animFrameId = requestAnimationFrame(renderScene);
+    }
+}
+
+/* 5번 페이지 진입 시 2초 주기로 모자이크 토글 타이머 실행 */
+function startMosaicTimer() {
+    stopMosaicTimer();
+    if (currentScreenNum === 5) {
+        mosaicTimer = setInterval(() => {
+            isFaceMosaicOn = !isFaceMosaicOn;
+        }, 2000);
+    }
+}
+
+function stopMosaicTimer() {
+    if (mosaicTimer) {
+        clearInterval(mosaicTimer);
+        mosaicTimer = null;
+    }
+    isFaceMosaicOn = false;
+}
+
+/* 첫 페이지 카메라 준비 */
+async function initFirstScreenCamera() {
+    try {
+        if (navigator.mediaDevices?.getUserMedia) {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: false
+            });
+            const video1 = document.getElementById("webcam1");
+            const hiddenVideo = document.getElementById("hiddenVideo");
+            video1.srcObject = stream;
+            hiddenVideo.srcObject = stream;
+        }
+    } catch (error) {
+        console.log("웹캠 접근 권한 거부됨:", error);
+    }
+}
+
+/* 1페이지 -> 2페이지 전환 */
+async function showCamera() {
+    if (isTransitioning) return;
+    isTransitioning = true;
+
+    const screen1 = document.getElementById("screen1");
+    const screen2 = document.getElementById("screen2");
+    const canvas2 = document.getElementById("canvas2");
+    const cameraText2 = document.getElementById("cameraText2");
+
+    screen1.classList.add("zoom-in");
+    await new Promise(resolve => setTimeout(resolve, 1100));
+
+    screen1.style.display = "none";
+    currentScreenNum = 2;
+    screen2.style.display = "flex";
+    screen2.classList.add("appear");
+
+    try {
+        if (!stream) {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: false
+            });
+            document.getElementById("hiddenVideo").srcObject = stream;
+        }
+
+        canvas2.style.display = "block";
+        cameraText2.style.display = "none";
+        await document.getElementById("hiddenVideo").play();
+
+        frameHistory = [];
+        stopMosaicTimer();
+        renderScene();
+
+    } catch (error) {
+        cameraText2.textContent = "카메라 권한을 허용해주세요.";
+        console.error(error);
+    }
+    isTransitioning = false;
+}
+
+/* 선택지에 따른 화면 이동 */
+async function goToScreen(targetNum) {
+    if (animFrameId) cancelAnimationFrame(animFrameId);
+    stopMosaicTimer();
+
+    for (let i = 2; i <= 5; i++) {
+        const scr = document.getElementById("screen" + i);
+        const cvs = document.getElementById("canvas" + i);
+        if (scr) {
+            scr.style.display = "none";
+            scr.classList.remove("appear");
+        }
+        if (cvs) cvs.style.display = "none";
+    }
+
+    currentScreenNum = targetNum;
+    const targetScreen = document.getElementById("screen" + targetNum);
+    const canvasElem = document.getElementById("canvas" + targetNum);
+    const cameraTextElem = document.getElementById("cameraText" + targetNum);
+
+    targetScreen.style.display = "flex";
+
+    try {
+        if (!stream) {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: false
+            });
+            document.getElementById("hiddenVideo").srcObject = stream;
+        }
+
+        canvasElem.style.display = "block";
+        if (cameraTextElem) cameraTextElem.style.display = "none";
+        await document.getElementById("hiddenVideo").play();
+
+        frameHistory = [];
+        
+        if (targetNum === 5) {
+            startMosaicTimer();
+        }
+
+        renderScene();
+
+    } catch (error) {
+        if (cameraTextElem) cameraTextElem.textContent = "카메라 권한을 허용해주세요.";
+        console.error(error);
+    }
+}
+
+/* 첫 화면으로 리셋 */
+function goToScreen1() {
+    if (animFrameId) cancelAnimationFrame(animFrameId);
+    stopMosaicTimer();
+    isTransitioning = false;
+
+    for (let i = 2; i <= 5; i++) {
+        const scr = document.getElementById("screen" + i);
+        const cvs = document.getElementById("canvas" + i);
+        if (scr) {
+            scr.style.display = "none";
+            scr.classList.remove("appear");
+        }
+        if (cvs) cvs.style.display = "none";
+    }
+
+    currentScreenNum = 1;
+    const screen1 = document.getElementById("screen1");
+    screen1.style.display = "flex";
+    screen1.classList.remove("zoom-in");
+}
+
+window.addEventListener("DOMContentLoaded", initFirstScreenCamera);
+
+window.addEventListener("pagehide", () => {
+    stopMosaicTimer();
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+});
+
+</script>
+
+</body>
+</html>
